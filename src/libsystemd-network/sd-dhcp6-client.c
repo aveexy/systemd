@@ -671,9 +671,9 @@ int dhcp6_client_send_message(sd_dhcp6_client *client) {
                 break;
 
         case DHCP6_STATE_SOLICITATION:
-                r = dhcp6_option_append(&opt, &optlen, SD_DHCP6_OPTION_RAPID_COMMIT, 0, NULL);
-                if (r < 0)
-                        return r;
+                //r = dhcp6_option_append(&opt, &optlen, SD_DHCP6_OPTION_RAPID_COMMIT, 0, NULL);
+                //if (r < 0)
+                //        return r;
 
                 r = client_append_common_options_in_managed_mode(client, &opt, &optlen,
                                                                  &client->ia_na, &client->ia_pd);
