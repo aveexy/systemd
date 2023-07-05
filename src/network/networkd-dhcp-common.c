@@ -355,6 +355,39 @@ int config_parse_dhcp_route_metric(
         return 0;
 }
 
+int config_parse_dhcp_gateway_route_metric(
+    const char* unit,
+    const char *filename,
+    unsigned line,
+    const char *section,
+    unsigned section_line,
+    const char *lvalue,
+    int ltype,
+    const char *rvalue,
+    void *data,
+    void *userdata) {
+
+        Network *network = userdata;
+        uint32_t metric;
+        int r;
+
+        assert(filename);
+        assert(lvalue);
+        assert(IN_SET(ltype, AF_UNSPEC, AF_INET));
+        assert(rvalue);
+        assert(data);
+
+        r = safe_atou32(rvalue, &metric);
+        if (r < 0) {
+                log_syntax(unit, LOG_WARNING, filename, line, r,
+                           "Failed to parse GatewayRouteMetric=%s, ignoring assignment: %m", rvalue);
+                return 0;
+        }
+
+        network->dhcp_gateway_route_metric = metric;
+        network->dhcp_gateway_route_metric_set = true;
+}
+
 int config_parse_ipv6_accept_ra_route_metric(
                 const char *unit,
                 const char *filename,
@@ -409,6 +442,64 @@ int config_parse_ipv6_accept_ra_route_metric(
         network->ipv6_accept_ra_route_metric_medium = metric_medium;
         network->ipv6_accept_ra_route_metric_low = metric_low;
         network->ipv6_accept_ra_route_metric_set = true;
+
+        return 0;
+}
+
+int config_parse_ipv6_accept_ra_gateway_route_metric(
+    const char *unit,
+    const char *filename,
+    unsigned line,
+    const char *section,
+    unsigned section_line,
+    const char *lvalue,
+    int ltype,
+    const char *rvalue,
+    void *data,
+    void *userdata) {
+
+        Network *network = ASSERT_PTR(userdata);
+        uint32_t metric_high, metric_medium, metric_low;
+        int r, s, t;
+
+        assert(filename);
+        assert(rvalue);
+
+        if (safe_atou32(rvalue, &metric_low) >= 0)
+                metric_high = metric_medium = metric_low;
+        else {
+                _cleanup_free_ char *high = NULL, *medium = NULL, *low = NULL;
+                const char *p = rvalue;
+
+                r = extract_many_words(&p, ":", EXTRACT_DONT_COALESCE_SEPARATORS, &high, &medium, &low, NULL);
+                if (r == -ENOMEM)
+                        return log_oom();
+                if (r != 3 || !isempty(p)) {
+                        log_syntax(unit, LOG_WARNING, filename, line, r < 0 ? r : 0,
+                                   "Failed to parse GatewayRouteTable=%s, ignoring assignment: %m", rvalue);
+                        return 0;
+                }
+
+                r = safe_atou32(high, &metric_high);
+                s = safe_atou32(medium, &metric_medium);
+                t = safe_atou32(low, &metric_low);
+                if (r < 0 || s < 0 || t < 0) {
+                        log_syntax(unit, LOG_WARNING, filename, line, r < 0 ? r : s < 0 ? s : t,
+                                   "Failed to parse GatewayRouteTable=%s, ignoring assignment: %m", rvalue);
+                        return 0;
+                }
+
+                if (metric_high >= metric_medium || metric_medium >= metric_low) {
+                        log_syntax(unit, LOG_WARNING, filename, line, 0,
+                                   "Invalid GatewayRouteTable=%s, ignoring assignment: %m", rvalue);
+                        return 0;
+                }
+        }
+
+        network->ipv6_accept_ra_gateway_route_metric_high = metric_high;
+        network->ipv6_accept_ra_gateway_route_metric_medium = metric_medium;
+        network->ipv6_accept_ra_gateway_route_metric_low = metric_low;
+        network->ipv6_accept_ra_gateway_route_metric_set = true;
 
         return 0;
 }
@@ -605,6 +696,50 @@ int config_parse_dhcp_or_ra_route_table(
                 break;
         default:
                 assert_not_reached();
+        }
+
+        return 0;
+}
+
+int config_parse_dhcp_or_ra_gateway_route_table(
+    const char *unit,
+    const char *filename,
+    unsigned line,
+    const char *section,
+    unsigned section_line,
+    const char *lvalue,
+    int ltype,
+    const char *rvalue,
+    void *data,
+    void *userdata) {
+
+        Network *network = ASSERT_PTR(userdata);
+        uint32_t rt;
+        int r;
+
+        assert(filename);
+        assert(lvalue);
+        assert(IN_SET(ltype, AF_INET, AF_INET6));
+        assert(rvalue);
+
+        r = manager_get_route_table_from_string(network->manager, rvalue, &rt);
+        if (r < 0) {
+                log_syntax(unit, LOG_WARNING, filename, line, r,
+                           "Failed to parse RouteTable=%s, ignoring assignment: %m", rvalue);
+                return 0;
+        }
+
+        switch (ltype) {
+                case AF_INET:
+                        network->dhcp_gateway_route_table = rt;
+                        network->dhcp_gateway_route_table_set = true;
+                        break;
+                case AF_INET6:
+                        network->ipv6_accept_ra_gateway_route_table = rt;
+                        network->ipv6_accept_ra_gateway_route_table_set = true;
+                        break;
+                default:
+                        assert_not_reached();
         }
 
         return 0;

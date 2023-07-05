@@ -532,6 +532,14 @@ static int dhcp4_request_gateway(Link *link, struct in_addr *gw) {
         route->gw_family = AF_INET;
         route->gw.in = router[0];
         route->prefsrc.in = address;
+        if (link->network->dhcp_gateway_route_table_set) {
+                route->table = link->network->dhcp_gateway_route_table;
+                route->table_set = true;
+        }
+        if (link->network->dhcp_gateway_route_metric_set) {
+                route->priority = link->network->dhcp_gateway_route_metric;
+                route->priority_set = true;
+        }
 
         r = dhcp4_request_route(TAKE_PTR(route), link);
         if (r < 0)

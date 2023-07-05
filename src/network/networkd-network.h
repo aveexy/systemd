@@ -126,6 +126,10 @@ struct Network {
         bool dhcp_route_metric_set;
         uint32_t dhcp_route_table;
         bool dhcp_route_table_set;
+        uint32_t dhcp_gateway_route_metric;
+        bool dhcp_gateway_route_metric_set;
+        uint32_t dhcp_gateway_route_table;
+        bool dhcp_gateway_route_table_set;
         uint32_t dhcp_fallback_lease_lifetime;
         uint32_t dhcp_route_mtu;
         uint16_t dhcp_client_port;
@@ -328,6 +332,12 @@ struct Network {
         uint32_t ipv6_accept_ra_route_metric_medium;
         uint32_t ipv6_accept_ra_route_metric_low;
         bool ipv6_accept_ra_route_metric_set;
+        uint32_t ipv6_accept_ra_gateway_route_table;
+        bool ipv6_accept_ra_gateway_route_table_set;
+        uint32_t ipv6_accept_ra_gateway_route_metric_high;
+        uint32_t ipv6_accept_ra_gateway_route_metric_medium;
+        uint32_t ipv6_accept_ra_gateway_route_metric_low;
+        bool ipv6_accept_ra_gateway_route_metric_set;
         Set *ndisc_deny_listed_router;
         Set *ndisc_allow_listed_router;
         Set *ndisc_deny_listed_prefix;

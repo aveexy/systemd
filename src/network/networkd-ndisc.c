@@ -165,6 +165,33 @@ static void ndisc_set_route_priority(Link *link, Route *route) {
         }
 }
 
+static void ndisc_set_gateway_route_priority(Link *link, Route *route) {
+        assert(link);
+        assert(route);
+
+        if (!link->network->ipv6_accept_ra_gateway_route_metric_set)
+                return;
+
+        if (route->priority_set)
+                return; /* explicitly configured. */
+
+        switch (route->pref) {
+                case SD_NDISC_PREFERENCE_LOW:
+                        route->priority = link->network->ipv6_accept_ra_gateway_route_metric_low;
+                        break;
+                case SD_NDISC_PREFERENCE_MEDIUM:
+                        route->priority = link->network->ipv6_accept_ra_gateway_route_metric_medium;
+                        break;
+                case SD_NDISC_PREFERENCE_HIGH:
+                        route->priority = link->network->ipv6_accept_ra_gateway_route_metric_high;
+                        break;
+                default:
+                        assert_not_reached();
+        }
+
+        route->priority_set = true;
+}
+
 static int ndisc_request_route(Route *in, Link *link, sd_ndisc_router *rt) {
         _cleanup_(route_freep) Route *route = in;
         struct in6_addr router;
@@ -594,6 +621,11 @@ static int ndisc_router_process_route(Link *link, sd_ndisc_router *rt) {
         route->dst.in6 = dst;
         route->dst_prefixlen = prefixlen;
         route->lifetime_usec = sec_to_usec(lifetime_sec, timestamp_usec);
+        if (link->network->ipv6_accept_ra_gateway_route_table_set) {
+                route->table = link->network->ipv6_accept_ra_gateway_route_table;
+                route->table_set = true;
+        }
+        ndisc_set_gateway_route_priority(link, route);
 
         r = ndisc_request_route(TAKE_PTR(route), link, rt);
         if (r < 0)
